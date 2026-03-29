@@ -105,6 +105,20 @@ CRIME DOMAINS:
 
 ---
 
+OUTPUTS:
+<img width="1877" height="875" alt="image" src="https://github.com/user-attachments/assets/5ad92f58-16d3-49be-bc1a-311d782a5afc" />
+<img width="1785" height="359" alt="image" src="https://github.com/user-attachments/assets/3ed49827-baa5-4c63-bf78-03c853e17dc0" />
+<img width="1794" height="671" alt="image" src="https://github.com/user-attachments/assets/e6151552-8731-4e90-8753-e30389c24e3e" />
+<img width="1664" height="264" alt="image" src="https://github.com/user-attachments/assets/d1d7300b-3275-4e28-ba4a-eac05b3fceb5" />
+<img width="1674" height="737" alt="image" src="https://github.com/user-attachments/assets/d56fe4c4-45f2-4f7f-822f-c33dd2d2c030" />
+<img width="977" height="1035" alt="image" src="https://github.com/user-attachments/assets/a0ce05c4-e62c-4eb8-968f-f568c066f883" />
+<img width="951" height="1033" alt="image" src="https://github.com/user-attachments/assets/7e4ad3d1-fa2d-4bdf-8107-61290076cd66" />
+
+THESE ARE THE SAMPLE OUTPUTS, THEY MAY VARY ACCORDING TO THE USER SELECTED CRIME QUERY PARAMETERS!!
+
+OVERALL, IT WAS A VERY FANTASTIC EXPERIENCE IN BUILDING AN IDEA AND THEN TO COMPLETE IMPLEMENTATION, WHICH OFFERS AN INTERFACE WITH EXCELLENT STYLING!
+
+
 DONE BY:
 - Name: VAISHNAVI KOLAMUDI
 - MCA GRADUATE🎓
