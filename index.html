@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Crime Analytics — RF &amp; XGBoost Intelligence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        /* ✅ Accuracy display — no circle, just number + colored label */
+        .accuracy-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 20px;
+        }
+        .accuracy-num {
+            font-size: 32px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1;
+        }
+        .rf-banner  .accuracy-num  { color: #00d4aa; }
+        .xgb-banner .accuracy-num  { color: #ff6b35; }
+        .accuracy-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .rf-banner  .accuracy-label { color: #00d4aa; }
+        .xgb-banner .accuracy-label { color: #ff6b35; }
+
+        /* 2-column prediction grid */
+        .pred-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .pred-grid-2 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow glow-1"></div>
+<div class="bg-glow glow-2"></div>
+<div class="bg-glow glow-3"></div>
+
+<header class="header">
+    <div class="header-inner">
+        <div class="logo-group">
+            <div class="logo-icon"><i class="fas fa-shield-halved"></i></div>
+            <div class="logo-text">
+                <h1>CRIME ANALYSIS AND PREDICTION</h1>
+                <span>Random Forest Analysis &bull; XGBoost Prediction</span>
+            </div>
+        </div>
+        <div class="header-badges">
+            <span class="badge badge-rf"><i class="fas fa-tree"></i> Random Forest</span>
+            <span class="badge badge-xgb"><i class="fas fa-bolt"></i> XGBoost</span>
+            <span class="badge badge-data"><i class="fas fa-database"></i> 40,160 Records</span>
+        </div>
+    </div>
+</header>
+
+<main class="main-container">
+    <div class="model-status-bar" id="modelStatusBar">
+        <div class="status-spinner"></div>
+        <span>Loading ML models (Random Forest &amp; XGBoost)... This may take 30–60 seconds on first run.</span>
+    </div>
+
+    <div class="input-card">
+        <div class="input-card-header">
+            <div class="input-header-left">
+                <i class="fas fa-sliders"></i>
+                <div>
+                    <h2>Crime Query Parameters</h2>
+                    <p>Select filters from actual dataset values to run analysis and prediction</p>
+                </div>
+            </div>
+        </div>
+        <div class="input-grid">
+            <div class="input-group">
+                <label for="city"><i class="fas fa-city"></i> City</label>
+                <div class="select-wrapper">
+                    <select id="city" name="city">
+                        {% for city in cities %}
+                        <option value="{{ city }}">{{ city }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="age"><i class="fas fa-user-clock"></i> Victim Age <span class="age-display" id="ageDisplay">25</span></label>
+                <div class="age-range-labels">
+                    {% for lo, hi, label in age_ranges %}
+                    <span class="age-tag">{{ label }}</span>
+                    {% endfor %}
+                </div>
+                <input type="range" id="age" name="age" min="10" max="79" value="25" class="age-slider">
+                <div class="age-slider-labels">
+                    <span>10</span><span>25</span><span>44</span><span>62</span><span>79</span>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="gender"><i class="fas fa-venus-mars"></i> Victim Gender</label>
+                <div class="select-wrapper">
+                    <select id="gender" name="gender">
+                        {% for code, label in genders.items() %}
+                        <option value="{{ code }}">{{ label }} ({{ code }})</option>
+                        {% endfor %}
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+            <div class="input-group">
+                <label for="weapon"><i class="fas fa-gun"></i> Weapon Used</label>
+                <div class="select-wrapper">
+                    <select id="weapon" name="weapon">
+                        {% for w in weapons %}
+                        <option value="{{ w }}">{{ w }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+            <div class="input-group full-width">
+                <label for="domain"><i class="fas fa-layer-group"></i> Crime Domain</label>
+                <div class="domain-pills" id="domainPills">
+                    {% for d in domains %}
+                    <div class="domain-pill {% if loop.first %}active{% endif %}" data-value="{{ d }}">
+                        <i class="fas {% if d == 'Violent Crime' %}fa-skull-crossbones{% elif d == 'Other Crime' %}fa-triangle-exclamation{% elif d == 'Fire Accident' %}fa-fire{% else %}fa-car-burst{% endif %}"></i>
+                        {{ d }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" id="domain" value="{{ domains[0] }}">
+            </div>
+        </div>
+        <div class="button-row">
+            <button class="btn btn-analyse" id="btnAnalyse" onclick="runAnalysis()">
+                <i class="fas fa-magnifying-glass-chart"></i>
+                <span>Analyse</span>
+                <em>Random Forest</em>
+            </button>
+            <button class="btn btn-predict" id="btnPredict" onclick="runPrediction()">
+                <i class="fas fa-chart-line"></i>
+                <span>Predict</span>
+                <em>XGBoost</em>
+            </button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-card">
+            <div class="loading-rings">
+                <div class="ring ring-1"></div>
+                <div class="ring ring-2"></div>
+                <div class="ring ring-3"></div>
+                <circle cx="40" cy="40" r="12" fill="#3d8bff" style="position:absolute;"/>
+            </div>
+            <h3 id="loadingTitle">Processing...</h3>
+            <p id="loadingMsg">Running machine learning model</p>
+        </div>
+    </div>
+
+    <div id="resultsSection" class="results-section hidden">
+        <div class="results-tabs">
+            <button class="tab-btn active" data-tab="rf" id="tabRF">
+                <i class="fas fa-tree"></i> RF Analysis Results
+            </button>
+            <button class="tab-btn" data-tab="xgb" id="tabXGB">
+                <i class="fas fa-bolt"></i> XGBoost Prediction Results
+            </button>
+        </div>
+
+        <!-- RANDOM FOREST TAB -->
+        <div id="rfResults" class="tab-content active">
+            <div class="model-accuracy-banner rf-banner">
+                <div class="accuracy-left">
+                    <i class="fas fa-tree"></i>
+                    <div>
+                        <h3>Random Forest Classifier</h3>
+                        <p>Target: Crime Domain Prediction · Multi-class Classification</p>
+                    </div>
+                </div>
+                <!-- ✅ No circle — clean accuracy number + green label -->
+                <div class="accuracy-right">
+                    <div class="accuracy-box">
+                        <div class="accuracy-num" id="rfAccuracyNum">--</div>
+                        <div class="accuracy-label" id="rfAccuracyLabel">Accuracy</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-overview" id="rfStats"></div>
+            <div class="records-header">
+                <h3><i class="fas fa-table"></i> Crime Records — Detailed Report</h3>
+                <span class="records-count" id="recordsCount">0 records</span>
+            </div>
+            <div class="table-wrapper">
+                <table class="crime-table" id="crimeTable">
+                    <thead>
+                        <tr>
+                            <th>Report No.</th>
+                            <th><i class="fas fa-calendar-plus"></i> Date Reported</th>
+                            <th><i class="fas fa-clock"></i> Time of Occurrence</th>
+                            <th><i class="fas fa-calendar-day"></i> Date of Occurrence</th>
+                            <th><i class="fas fa-file-alt"></i> Crime Code</th>
+                            <th><i class="fas fa-file-alt"></i> Crime Description</th>
+                            <th><i class="fas fa-user-shield"></i> Police Deployed</th>
+                            <th><i class="fas fa-folder-closed"></i> Case Closed</th>
+                            <th><i class="fas fa-calendar-check"></i> Date Case Closed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="crimeTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- XGBOOST TAB — 3 CARD LAYOUT -->
+        <div id="xgbResults" class="tab-content">
+            <div class="model-accuracy-banner xgb-banner">
+                <div class="accuracy-left">
+                    <i class="fas fa-bolt"></i>
+                    <div>
+                        <h3>XGBoost Classifier</h3>
+                        <p>Target: Crime Domain Prediction · Multi-class Classification</p>
+                    </div>
+                </div>
+                <!-- ✅ No circle — clean accuracy number + orange label -->
+                <div class="accuracy-right">
+                    <div class="accuracy-box">
+                        <div class="accuracy-num" id="xgbAccuracyNum">--</div>
+                        <div class="accuracy-label" id="xgbAccuracyLabel">Accuracy</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOP: Crime Prediction Summary (full width) -->
+            <div class="pred-card" style="margin-bottom:20px;">
+                <h3><i class="fas fa-bullseye"></i> Crime Prediction</h3>
+                <p class="pred-subtitle">Predicted crime domain and crimes based on selected query parameters</p>
+                <div id="crimePredictionCard"></div>
+            </div>
+
+            <!-- BOTTOM: 2 charts side by side -->
+            <div class="pred-grid-2">
+                <div class="pred-card">
+                    <h3><i class="fas fa-calendar-alt"></i> Yearly Crime Trend</h3>
+                    <p class="pred-subtitle">Number of crimes recorded per year (2020–2024) for selected filters</p>
+                    <div style="position:relative;height:250px;">
+                        <canvas id="yearlyBarCanvas"></canvas>
+                    </div>
+                </div>
+                <div class="pred-card">
+                    <h3><i class="fas fa-chart-line"></i> Monthly Crime Trend</h3>
+                    <p class="pred-subtitle">Crime occurrence across months for selected filters</p>
+                    <div style="position:relative;height:250px;">
+                        <canvas id="monthlyLineCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <div class="footer-inner">
+        <span><i class="fas fa-database"></i> Dataset: India Crime Dataset · 40,160 Records</span>
+        <span><i class="fas fa-tree"></i> Random Forest &nbsp;|&nbsp; <i class="fas fa-bolt"></i> XGBoost</span>
+        <span><i class="fas fa-shield-halved"></i> Crime Analysis &amp; Prediction System</span>
+    </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
